@@ -9,36 +9,40 @@ import (
 	"net/http"
 )
 
-func GetHouseByID(c *gin.Context) {
+type Server struct {
+	Store database.DBStore
+}
+
+func (s *Server) GetHouseByID(c *gin.Context) {
 	id := c.Param("id")
-	res, err := database.GetHouseByID(id)
+	res, err := s.Store.GetHouseByID(id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err)
 	}
 	c.JSON(http.StatusOK, res)
 }
 
-func GetAllHouses(c *gin.Context) {
-	res, err := database.GetAllHouses()
+func (s *Server) GetAllHouses(c *gin.Context) {
+	res, err := s.Store.GetAllHouses()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err)
 	}
 	c.JSON(http.StatusOK, res)
 }
 
-func AddNewHouse(c *gin.Context) {
+func (s *Server) AddNewHouse(c *gin.Context) {
 	var req domain.HomeRest
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err)
 	}
-	database.AddNewHouse(req)
+	s.Store.AddNewHouse(req)
 	c.JSON(http.StatusOK, gin.H{
 		"Message": "New Information successfully added to database",
 	})
 }
 
-func UpdateNewImage(c *gin.Context) {
+func (s *Server) UpdateNewImage(c *gin.Context) {
 	id := c.Param("id")
 	var buf = bytes.Buffer{}
 
@@ -50,20 +54,21 @@ func UpdateNewImage(c *gin.Context) {
 	if _, err = io.Copy(&buf, image); err != nil {
 		c.JSON(http.StatusInternalServerError, err)
 	}
-	database.UpdateNewImage(buf, id, res)
+	s.Store.UpdateNewImage(buf, id, res)
 	c.JSON(http.StatusOK, gin.H{
 		"Message": "Image successfully added",
 	})
 }
 
-func GetImageByID(c *gin.Context) {
+func (s *Server) GetImageByID(c *gin.Context) {
 	id := c.Param("id")
 
-	err := database.GetImageByID(id)
+	fileName, err := s.Store.GetImageByID(id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err)
 	}
-	c.Writer.Header().Set("Content-Disposition", "attachment; filename="+"1.png")
+	c.Writer.Header().Set("Content-Disposition", "attachment; filename="+fileName)
 	c.Writer.Header().Set("Content-Type", "multipart/form-data")
-	c.File("./picture/Big_house.png")
+	c.File("./picture/" + fileName)
+
 }

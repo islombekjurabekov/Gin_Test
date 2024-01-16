@@ -1,7 +1,6 @@
 package database
 
 import (
-	"Gin_test/ConnectDatabase"
 	"Gin_test/domain"
 	"bytes"
 	"database/sql"
@@ -12,18 +11,31 @@ import (
 	"os"
 )
 
+type DBStore struct {
+	DB *sql.DB
+}
+
+func New(db *sql.DB) *DBStore {
+	return &DBStore{
+		DB: db,
+	}
+}
+
 func DBHouseToModel(h []domain.DBHouse) []domain.HouseRest {
 	v := make([]domain.HouseRest, len(h))
 	for i := range h {
-		v[i] = domain.HouseRest{
-			ID:               h[i].ID,
-			Address:          h[i].Address,
-			Number:           h[i].Number,
-			RoomName:         h[i].RoomName,
-			ColorOfBookshelf: h[i].ColorOfBookshelf,
-			Image:            h[i].Image,
-			ImageName:        h[i].ImageName,
-		}
+		v[i] = HouseToModel(h[i])
+	}
+	return v
+}
+
+func HouseToModel(h domain.DBHouse) domain.HouseRest {
+	v := domain.HouseRest{
+		ID:               h.ID,
+		Address:          h.Address,
+		Number:           h.Number,
+		RoomName:         h.RoomName,
+		ColorOfBookshelf: h.ColorOfBookshelf,
 	}
 	return v
 }
@@ -34,40 +46,24 @@ func DBHomeRestToModel(h domain.HomeRest) domain.DBHome {
 		Number:           h.Number,
 		RoomName:         h.RoomName,
 		ColorOfBookshelf: h.ColorOfBookshelf,
-		Image:            h.Image,
-		ImageName:        h.ImageName,
 	}
 	return view
 }
 
-func GetHouseByID(id string) ([]domain.HouseRest, error) {
-	var res []domain.DBHouse
-	rows, err := ConnectDatabase.DB.Query("SELECT id, address, number, room_name, color_of_bookshelf, image_name FROM my_house WHERE id = $1", id)
+func (d *DBStore) GetHouseByID(id string) (domain.HouseRest, error) {
+	rows := d.DB.QueryRow("SELECT id, address, number, room_name, color_of_bookshelf FROM my_house WHERE id = $1", id)
+	var s domain.DBHouse
+	err := rows.Scan(&s.ID, &s.Address, &s.Number, &s.RoomName, &s.ColorOfBookshelf)
 	if err != nil {
-		log.Fatal(err)
+		return domain.HouseRest{}, err
 	}
-
-	defer func(rows *sql.Rows) {
-		err := rows.Close()
-		if err != nil {
-
-		}
-	}(rows)
-	for rows.Next() {
-		var s domain.DBHouse
-		err := rows.Scan(&s.ID, &s.Address, &s.Number, &s.RoomName, &s.ColorOfBookshelf, &s.ImageName)
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, s)
-	}
-	return DBHouseToModel(res), nil
+	return HouseToModel(s), nil
 }
 
-func GetAllHouses() ([]domain.HouseRest, error) {
+func (d *DBStore) GetAllHouses() ([]domain.HouseRest, error) {
 	var res []domain.DBHouse
 
-	rows, err := ConnectDatabase.DB.Query("SELECT id, address, number, room_name, color_of_bookshelf, image_name FROM my_house")
+	rows, err := d.DB.Query("SELECT id, address, number, room_name, color_of_bookshelf FROM my_house")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,7 +77,7 @@ func GetAllHouses() ([]domain.HouseRest, error) {
 
 	for rows.Next() {
 		var r domain.DBHouse
-		err := rows.Scan(&r.ID, &r.Address, &r.Number, &r.RoomName, &r.ColorOfBookshelf, &r.ImageName)
+		err := rows.Scan(&r.ID, &r.Address, &r.Number, &r.RoomName, &r.ColorOfBookshelf)
 		if err != nil {
 			return nil, err
 		}
@@ -90,37 +86,37 @@ func GetAllHouses() ([]domain.HouseRest, error) {
 	return DBHouseToModel(res), nil
 }
 
-func AddNewHouse(param domain.HomeRest) {
+func (d *DBStore) AddNewHouse(param domain.HomeRest) {
 	DBHomeRestToModel(param)
-	_, err := ConnectDatabase.DB.Exec("INSERT INTO my_house(address, number, room_name, color_of_bookshelf) VALUES ($1, $2, $3, $4)", param.Address, param.Number, param.RoomName, param.ColorOfBookshelf)
+	_, err := d.DB.Exec("INSERT INTO my_house(address, number, room_name, color_of_bookshelf) VALUES ($1, $2, $3, $4)", param.Address, param.Number, param.RoomName, param.ColorOfBookshelf)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func UpdateNewImage(buffer bytes.Buffer, id string, res *multipart.FileHeader) {
-	_, err := ConnectDatabase.DB.Exec("UPDATE my_house SET image = $1, image_name = $2 WHERE id = $3", buffer.String(), res.Filename, id)
+func (d *DBStore) UpdateNewImage(buffer bytes.Buffer, id string, res *multipart.FileHeader) {
+	_, err := d.DB.Exec("UPDATE my_house SET image = $1, image_name = $2 WHERE id = $3", buffer.String(), res.Filename, id)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func GetImageByID(id string) error {
+func (d *DBStore) GetImageByID(id string) (string, error) {
 	var (
 		images, imagesName string
 		err                error
 		img                image.Image
 	)
-	row := ConnectDatabase.DB.QueryRow("SELECT image, image_name FROM my_house WHERE id = $1", id)
+	row := d.DB.QueryRow("SELECT image, image_name FROM my_house WHERE id = $1", id)
 	err = row.Scan(&images, &imagesName)
 	if err != nil {
-		return err
+		return "", err
 	}
 	bite := []byte(images)
 
 	img, _, err = image.Decode(bytes.NewReader(bite))
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	out, _ := os.Create("./picture/" + imagesName)
@@ -133,7 +129,7 @@ func GetImageByID(id string) error {
 
 	err = png.Encode(out, img)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return imagesName, nil
 }

@@ -8,13 +8,14 @@ import (
 )
 
 func main() {
-	ConnectDatabase.Connection()
+	store := ConnectDatabase.Connection()
+	server := rest.Server{Store: store}
 	r := gin.Default()
-	r.GET("/get-house/:id", rest.GetHouseByID)
-	r.GET("/get-all-houses", rest.GetAllHouses)
-	r.POST("/add-new-house", rest.AddNewHouse)
-	r.POST("/add-new-image/:id", rest.UpdateNewImage)
-	r.GET("/upload-image/:id", rest.GetImageByID)
+	r.GET("/get-house/:id", server.GetHouseByID)
+	r.GET("/get-all-houses", server.GetAllHouses)
+	r.POST("/add-new-house", server.AddNewHouse)
+	r.POST("/add-new-image/:id", server.UpdateNewImage)
+	r.GET("/upload-image/:id", server.GetImageByID)
 	if err := r.Run("localhost:8080"); err != nil {
 		return
 	}
