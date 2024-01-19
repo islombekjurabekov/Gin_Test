@@ -8,11 +8,12 @@ import (
 )
 
 func main() {
-	store := ConnectDatabase.Connection()
-	server := rest.Server{Store: store}
+	store, redis := ConnectDatabase.Connection()
+	server := rest.Server{Store: store, Redis: redis}
 	r := gin.Default()
 	r.GET("/get-house/:id", server.GetHouseByID)
 	r.GET("/get-all-houses", server.GetAllHouses)
+	r.POST("/add-new-house-by-key/:key", server.AddNewHouseByKeyToDatabase)
 	r.POST("/add-new-house", server.AddNewHouse)
 	r.POST("/add-new-image/:id", server.UpdateNewImage)
 	r.GET("/upload-image/:id", server.GetImageByID)

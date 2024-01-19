@@ -15,8 +15,8 @@ type DBStore struct {
 	DB *sql.DB
 }
 
-func New(db *sql.DB) *DBStore {
-	return &DBStore{
+func New(db *sql.DB) DBStore {
+	return DBStore{
 		DB: db,
 	}
 }
@@ -86,8 +86,8 @@ func (d *DBStore) GetAllHouses() ([]domain.HouseRest, error) {
 	return DBHouseToModel(res), nil
 }
 
-func (d *DBStore) AddNewHouse(param domain.HomeRest) {
-	DBHomeRestToModel(param)
+func (d *DBStore) AddNewHouseByKeyToDatabase(param domain.HomeRest) {
+
 	_, err := d.DB.Exec("INSERT INTO my_house(address, number, room_name, color_of_bookshelf) VALUES ($1, $2, $3, $4)", param.Address, param.Number, param.RoomName, param.ColorOfBookshelf)
 	if err != nil {
 		log.Fatal(err)
