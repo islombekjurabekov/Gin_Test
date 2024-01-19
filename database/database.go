@@ -7,7 +7,6 @@ import (
 	"image"
 	"image/png"
 	"log"
-	"mime/multipart"
 	"os"
 )
 
@@ -46,6 +45,14 @@ func DBHomeRestToModel(h domain.HomeRest) domain.DBHome {
 		Number:           h.Number,
 		RoomName:         h.RoomName,
 		ColorOfBookshelf: h.ColorOfBookshelf,
+		Image: sql.NullString{
+			String: h.Image,
+			Valid:  h.Image != "",
+		},
+		ImageName: sql.NullString{
+			String: h.ImageName,
+			Valid:  h.ImageName != "",
+		},
 	}
 	return view
 }
@@ -86,20 +93,21 @@ func (d *DBStore) GetAllHouses() ([]domain.HouseRest, error) {
 	return DBHouseToModel(res), nil
 }
 
-func (d *DBStore) AddNewHouseByKeyToDatabase(param domain.HomeRest) {
-
-	_, err := d.DB.Exec("INSERT INTO my_house(address, number, room_name, color_of_bookshelf) VALUES ($1, $2, $3, $4)", param.Address, param.Number, param.RoomName, param.ColorOfBookshelf)
+func (d *DBStore) AddNewHouse(param domain.HomeRest) {
+	DBHomeRestToModel(param)
+	_, err := d.DB.Exec("INSERT INTO my_house(address, number, room_name, color_of_bookshelf, image, image_name) VALUES ($1, $2, $3, $4, $5, $6)", param.Address, param.Number, param.RoomName, param.ColorOfBookshelf, param.Image, param.ImageName)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 }
 
-func (d *DBStore) UpdateNewImage(buffer bytes.Buffer, id string, res *multipart.FileHeader) {
-	_, err := d.DB.Exec("UPDATE my_house SET image = $1, image_name = $2 WHERE id = $3", buffer.String(), res.Filename, id)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
+//func (d *DBStore) UpdateNewImage(buffer string, id string, res string) {
+//	_, err := d.DB.Exec("UPDATE my_house SET image = $1, image_name = $2 WHERE id = $3", buffer.String(), res.Filename, id)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//}
 
 func (d *DBStore) GetImageByID(id string) (string, error) {
 	var (

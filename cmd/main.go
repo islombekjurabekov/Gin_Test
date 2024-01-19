@@ -13,10 +13,9 @@ func main() {
 	r := gin.Default()
 	r.GET("/get-house/:id", server.GetHouseByID)
 	r.GET("/get-all-houses", server.GetAllHouses)
-	r.POST("/add-new-house-by-key/:key", server.AddNewHouseByKeyToDatabase)
 	r.POST("/add-new-house", server.AddNewHouse)
-	r.POST("/add-new-image/:id", server.UpdateNewImage)
-	r.GET("/upload-image/:id", server.GetImageByID)
+	r.GET("/get-image/:id", server.GetImageByID)
+	r.POST("/upload-image-to-redis", server.SaveToRedisFile)
 	if err := r.Run("localhost:8080"); err != nil {
 		return
 	}
